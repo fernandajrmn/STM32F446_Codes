@@ -3,8 +3,27 @@
 #include "clock.h"
 
 /* LED control */
-#define LED_ON()   (GPIOA->BSRR = (1U << 5))
-#define LED_OFF()  (GPIOA->BSRR = (1U << (5 + 16)))
+#define LED_ON()   (GPIOA->BSRR = (1U << 5)) //Macros defined using register BSSR for pin PA5 to turn on the led. 
+#define LED_OFF()  (GPIOA->BSRR = (1U << (5 + 16))) //Macros defined using same register BSSRD for turning off the led. 
+
+void GPIO_PA5_Output_Init(void); //Declaration of function for PA5 configuration
+void delay_us(uint32_t us); //Declaration of delay function. 
+
+
+
+int main(void) {
+	SystemClock_Config_180MHz();
+	GPIO_PA5_Output_Init();
+
+
+    while (1) {
+    	LED_ON();
+    	delay_us(5000000);
+    	LED_OFF();
+    	delay_us(5000000);
+
+    }
+}
 
 
 
@@ -29,7 +48,6 @@ void GPIO_PA5_Output_Init(void)
 }
 
 
-
 void delay_us(uint32_t us)
 {
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;  // Habilitar TIM2
@@ -45,19 +63,4 @@ void delay_us(uint32_t us)
     while (!(TIM2->SR & TIM_SR_UIF)); // Esperar fin
     TIM2->CR1 = 0;
     RCC->APB1ENR &= ~RCC_APB1ENR_TIM2EN;
-}
-
-
-int main(void) {
-	SystemClock_Config_180MHz();
-	GPIO_PA5_Output_Init();
-
-
-    while (1) {
-    	LED_ON();
-    	delay_us(5000000);
-    	LED_OFF();
-    	delay_us(5000000);
-
-    }
 }
