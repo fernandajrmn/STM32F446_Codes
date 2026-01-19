@@ -111,6 +111,9 @@ int main(void)
 {
     // Example: if your TIM3 clock real is 90 MHz:
     TIM3_PWM_PB4_CH1_Init_1kHz(90000000UL, 500); // ~50% with ARR=999
+    
+    // Example: if your TIM3 clock real is 16 MHz:
+    //TIM3_PWM_PB4_CH1_Init_1kHz(16000000UL, 500); // ~50% with ARR=999
 
     while (1)
     {
