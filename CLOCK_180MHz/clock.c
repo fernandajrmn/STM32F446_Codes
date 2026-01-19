@@ -3,11 +3,11 @@
 
 void SystemClock_Config_180MHz(void)
 {
-    // 1. HSE ON (8 MHz de ST-LINK)
+    // 1. HSE ON (8 MHz from ST-LINK)
     RCC->CR |= RCC_CR_HSEON; //Turning on the HSE (External Oscillator).
     while (!(RCC->CR & RCC_CR_HSERDY)); //(Wait until HSE is ready).
 
-    // 2. Power interface clock y escala de voltaje alta
+    // 2. Power interface clock y high voltage scale
     RCC->APB1ENR |= RCC_APB1ENR_PWREN; //(Enabling clock for PWR Module on APB1 bus). 
     PWR->CR |= PWR_CR_VOS; // High performance voltage configuration (Scale 1).
 
