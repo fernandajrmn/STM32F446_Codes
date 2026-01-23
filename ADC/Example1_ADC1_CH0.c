@@ -1,3 +1,21 @@
+/**
+ * Example A (STM32F446RE) — ADC Regular Group, Single Channel, Single Conversion, Polling
+ *
+ * Goal:
+ *  - Read an analog voltage on PA0 (ADC1_IN0)
+ *  - Regular group
+ *  - Single conversion (CONT = 0)
+ *  - Software start (SWSTART)
+ *  - Poll EOC, then read DR (reading DR clears EOC)
+ *
+ * Wiring (recommended):
+ *  - Potentiometer end pins: 3.3V and GND
+ *  - Potentiometer wiper: PA0
+ *
+ * Notes:
+ *  - ADC input voltage must stay within [VREF- .. VREF+]. On Nucleo, VREF+ is typically ~3.3V.
+ *  - This is register-level (no HAL).
+ */
 #include "stm32f446xx.h"
 #include <stdint.h>
 
