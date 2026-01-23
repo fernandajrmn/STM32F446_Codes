@@ -48,7 +48,7 @@ int main(void)
           00:/2  01:/4  10:/6  11:/8
     */
    //For 16 MHz, the recommended prescaler is /2 (ADCCLK=8 MHz). Use /4 (ADCCLK=4 MHz)for higher precision 
-   //For 16 MHz, the recommended prescaler is /4 (ADCCLK=22.5 MHz). Use /6 (ADCCLK=15 MHz)for higher precision 
+   //For 90 MHz, the recommended prescaler is /4 (ADCCLK=22.5 MHz). Use /6 (ADCCLK=15 MHz)for higher precision 
     ADC->CCR &= ~ADC_CCR_ADCPRE;
     ADC->CCR |=  ADC_CCR_ADCPRE_0;        // /4
 
