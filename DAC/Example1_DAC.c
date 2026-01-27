@@ -1,11 +1,6 @@
 #include "stm32f446xx.h"
 #include <stdint.h>
 
-static void delay_cycles(volatile uint32_t cycles)
-{
-    while (cycles--) { __NOP(); }
-}
-
 int main(void)
 {
     /* STEP 1: Clocks */
@@ -27,11 +22,8 @@ int main(void)
 
     /* tWAKEUP: give it a few microseconds.
        At 16 MHz, 200 cycles ~ 12.5 us (safe). */
-    delay_cycles(200);
 
-    /* STEP 4: Write 12-bit value */
-    uint16_t code = 2048;                 // mid-scale
-    DAC->DHR12R1 = (code & 0x0FFF);
+    DAC->DHR12R1 = 1024; // mid-scale
 
     while (1)
     {
