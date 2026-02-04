@@ -11,6 +11,30 @@
 #define CS_HIGH()  (CS_PORT->BSRR = (1u <<  CS_PIN))
 
 
+uint8_t  r0;
+uint8_t  r1;
+
+
+
+void delay_us(uint32_t us)
+{
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;  // Habilitar TIM2
+
+    // APB1 = 45 MHz → timer clock = 2×45 MHz = 90 MHz (porque APB1 prescaler != 1)
+    // Queremos 1 tick = 1 µs → PSC = 90 - 1
+    TIM2->PSC = 90 - 1;
+    TIM2->ARR = us;
+    TIM2->EGR = TIM_EGR_UG;
+    TIM2->SR = 0;
+    TIM2->CR1 = TIM_CR1_OPM | TIM_CR1_CEN;
+
+    while (!(TIM2->SR & TIM_SR_UIF)); // Esperar fin
+    TIM2->CR1 = 0;
+    RCC->APB1ENR &= ~RCC_APB1ENR_TIM2EN;
+}
+
+
+
 /* =========================
    Step 1: RCC clocks
    ========================= */
@@ -25,38 +49,60 @@ static void SPI1_Clocks_Enable(void)
 
 /* =========================
    Step 2: GPIO AF for SPI pins + CS as output
-   SPI1 AF = AF5
-   PA5=SCK, PA7=MOSI (PA6=MISO optional)
    ========================= */
 static void SPI1_GPIO_Init(void)
 {
-    /* ---- PA5 (SCK), PA7 (MOSI) as AF5 ---- */
-    /* MODER: 10 = Alternate Function */
-    GPIOA->MODER &= ~((3u << (5u*2u)) | (3u << (7u*2u)));
-    GPIOA->MODER |=  ((2u << (5u*2u)) | (2u << (7u*2u)));
+    /* =========================
+       SPI1 pins on GPIOA (AF5)
+       PA5 = SCK
+       PA6 = MISO
+       PA7 = MOSI
+       ========================= */
 
-    /* AFRL (pins 0..7): set AF5 (0101) for PA5 and PA7 */
-    GPIOA->AFR[0] |=  ((5u   << (5u*4u)) | (5u   << (7u*4u)));
+    /* 1) Alternate function mode for PA5, PA6, PA7 (MODER = 10) */
+    GPIOA->MODER &= ~((3u << (5u*2u)) | (3u << (6u*2u)) | (3u << (7u*2u)));
+    GPIOA->MODER |=  ((2u << (5u*2u)) | (2u << (6u*2u)) | (2u << (7u*2u)));
 
-    /* Speed: High/Very High recommended for SCK/MOSI */
-    GPIOA->OSPEEDR |= (3u << (5u*2u)) | (3u << (7u*2u));
+    /* 2) Select AF5 for PA5, PA6, PA7 (AFRL bits) */
+    GPIOA->AFR[0] &= ~((0xFu << (5u*4u)) | (0xFu << (6u*4u)) | (0xFu << (7u*4u)));
+    GPIOA->AFR[0] |=  ((5u   << (5u*4u)) | (5u   << (6u*4u)) | (5u   << (7u*4u)));
 
-    /* Output type: push-pull (default 0) */
+    /* 3) Speed: high/very high recommended for SCK/MOSI/MISO */
+    GPIOA->OSPEEDR |= (3u << (5u*2u)) | (3u << (6u*2u)) | (3u << (7u*2u));
+
+    /* 4) Output type: push-pull for SCK and MOSI (MISO is input but keep default) */
     GPIOA->OTYPER &= ~((1u << 5u) | (1u << 7u));
 
-    /* Pull-up/down: usually none for SCK/MOSI (depends on wiring) */
-    GPIOA->PUPDR &= ~((3u << (5u*2u)) | (3u << (7u*2u)));
+    /* 5) Pulls:
+          - SCK/MOSI: no pull
+          - MISO: usually no pull (or you can use pull-down to avoid floating if slave tristates)
+    */
+    GPIOA->PUPDR &= ~((3u << (5u*2u)) | (3u << (6u*2u)) | (3u << (7u*2u)));
+    /* Optional: enable pull-down on MISO (PA6) */
+    /* GPIOA->PUPDR |=  (2u << (6u*2u)); */  // 10 = pull-down
 
-    /* ---- PB6 as GPIO output for CS ---- */
+    /* =========================
+       External CS on GPIOB
+       PB6 = CS (GPIO output)
+       ========================= */
+
+    /* PB6 output mode (MODER6 = 01) */
     GPIOB->MODER &= ~(3u << (CS_PIN*2u));
-    GPIOB->MODER |=  (1u << (CS_PIN*2u));  // 01 = output
+    GPIOB->MODER |=  (1u << (CS_PIN*2u));
 
-    GPIOB->OSPEEDR |= (3u << (CS_PIN*2u)); // fast edge OK for CS
-    GPIOB->OTYPER  &= ~(1u << CS_PIN);     // push-pull
-    GPIOB->PUPDR   &= ~(3u << (CS_PIN*2u)); // no pull
+    /* Fast edge ok for CS */
+    GPIOB->OSPEEDR |= (3u << (CS_PIN*2u));
 
-    CS_HIGH(); // idle high (CS active-low)
+    /* Push-pull */
+    GPIOB->OTYPER &= ~(1u << CS_PIN);
+
+    /* No pull */
+    GPIOB->PUPDR &= ~(3u << (CS_PIN*2u));
+
+    /* Idle high (active-low CS) */
+    CS_HIGH();
 }
+
 
 /* =========================
    Step 3-6: SPI1 config (Polling baseline)
@@ -86,19 +132,19 @@ static void SPI1_Init_Polling(void)
     BR presets for your two clock modes (SPI1 on APB2)
    BR codes: 000=/2, 001=/4, 010=/8, 011=/16, 100=/32, 101=/64, 110=/128, 111=/256
    =========================
-  
 
-   If PCLK2 = 16 MHz (default boot): 
-   /16 => 1 MHz (BR=0b011 = 3) 
-   
-   
+
+   If PCLK2 = 16 MHz (default boot):
+   /16 => 1 MHz (BR=0b011 = 3)
+
+
    If PCLK2 = 90 MHz (typical with SYSCLK=180 and APB2=/2):
    /64 => 1.40625 MHz (BR=0b101 = 5)  [safe bring-up]
    /32 => 2.8125  MHz (BR=0b100 = 4)  [faster, still safe]
-    =========================   
+    =========================
     */
-    
-    SPI1->CR1 |= (5u << SPI_CR1_BR_Pos);
+
+    SPI1->CR1 |= (3u << SPI_CR1_BR_Pos);
     SPI1->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI;
 
     /* Full-duplex default: BIDIMODE=0, RXONLY=0 */
@@ -149,13 +195,25 @@ int main(void)
 
     SPI1_Clocks_Enable();
     SPI1_GPIO_Init();
-
-    /* Choose one based on your clock mode */
-    /* SPI1_Init_Polling(BR_FOR_16MHZ_BOOT); */
     SPI1_Init_Polling();
 
     while (1)
     {
+        CS_LOW();
+        //delay_cycles(2000);               // small setup time for slave
+        delay_us(100000);
 
+        r0 = SPI1_Transfer(0xA5); // expect 0x3C
+        r1 = SPI1_Transfer(0x5A); // expect 0xC3
+
+        SPI1_WaitEnd();
+        CS_HIGH();
+
+        (void)r0;
+        (void)r1;
+
+        //delay_cycles(2000000);            // spacing between sessions (optional)
+        delay_us(1000000);
     }
+
 }
