@@ -115,7 +115,7 @@ static void SPI1_Init_Polling(void)
    Step 7-9: Polling transfer primitive
    Sends 1 byte and returns the simultaneously received byte.
    ========================= */
-static uint8_t SPI1_Transfer8(uint8_t tx)
+static uint8_t SPI1_Transfer(uint8_t tx)
 {
     /* Wait until TXE=1 (transmit buffer empty) */
     while ((SPI1->SR & SPI_SR_TXE) == 0);
