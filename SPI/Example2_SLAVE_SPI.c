@@ -45,7 +45,7 @@ static void SPI1_GPIO_Init_Slave(void)
 }
 
 /* Step 3-6: SPI1 SLAVE config (Mode 0, HW NSS, polling) */
-static void SPI1_Init_Slave_Polling_Mode0_HWNSS(void)
+static void SPI1_Init_Slave_Polling_Mode0(void)
 {
     /* Disable SPI */
     SPI1->CR1 &= ~SPI_CR1_SPE;
@@ -103,7 +103,7 @@ int main(void)
 {
     SPI1_Clocks_Enable();
     SPI1_GPIO_Init_Slave();
-    SPI1_Init_Slave_Polling_Mode0_HWNSS();
+    SPI1_Init_Slave_Polling_Mode0();
 
     /* Example B fixed response bytes */
     const uint8_t tx0 = 0x3Cu;
@@ -115,19 +115,19 @@ int main(void)
         WaitFor_NSS_Low();
 
         /* Preload first response BEFORE the first clocks (best practice) */
-        while ((SPI1->SR & SPI_SR_TXE) == 0) { }
+        while ((SPI1->SR & SPI_SR_TXE) == 0);
         SPI1_WriteDR(tx0);
 
         /* Receive byte #1 (master clocks it) */
-        while ((SPI1->SR & SPI_SR_RXNE) == 0) { }
+        while ((SPI1->SR & SPI_SR_RXNE) == 0);
         uint8_t rx0 = SPI1_ReadDR();   (void)rx0;
 
         /* Load response #2 as soon as TXE allows */
-        while ((SPI1->SR & SPI_SR_TXE) == 0) { }
+        while ((SPI1->SR & SPI_SR_TXE) == 0);
         SPI1_WriteDR(tx1);
 
         /* Receive byte #2 */
-        while ((SPI1->SR & SPI_SR_RXNE) == 0) { }
+        while ((SPI1->SR & SPI_SR_RXNE) == 0);
         uint8_t rx1 = SPI1_ReadDR();   (void)rx1;
 
         /* If overrun happened (debug safety) */
