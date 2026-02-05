@@ -200,8 +200,7 @@ int main(void)
     while (1)
     {
         CS_LOW();
-        //delay_cycles(2000);               // small setup time for slave
-        delay_us(100000);
+        delay_us(100000); // small setup time for slave
 
         r0 = SPI1_Transfer(0xA5); // expect 0x3C
         r1 = SPI1_Transfer(0x5A); // expect 0xC3
@@ -212,8 +211,7 @@ int main(void)
         (void)r0;
         (void)r1;
 
-        //delay_cycles(2000000);            // spacing between sessions (optional)
-        delay_us(1000000);
+        delay_us(1000000); // spacing between sessions (optional)
     }
 
 }
